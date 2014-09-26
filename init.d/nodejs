@@ -1,0 +1,40 @@
+#!/sbin/runscript
+
+APPLICATION=${RC_SVCNAME#*.}
+DIRECTORY=/var/www/webapps/$APPLICATION/
+PIDFILE=/var/run/${APPLICATION}.pid
+
+depend(){
+        need net
+}
+
+start(){
+        ebegin "Starting ${APPLICATION}"
+        env $(cat ${DIRECTORY}/env.sh | xargs) start-stop-daemon \
+                --start \
+                -u nodejs:www \
+                -d "${DIRECTORY}" \
+                -1 /var/log/nodejs/${APPLICATION}.log \
+                -2 /var/log/nodejs/${APPLICATION}.err \
+                -m --pidfile ${PIDFILE} \
+                --background \
+                --exec /usr/bin/node -- server.js
+        eend $?
+}
+
+stop(){
+        ebegin "Stopping ${APPLICATION}"
+        start-stop-daemon \
+                --stop \
+                --pidfile ${PIDFILE} \
+                -d "${DIRECTORY}"
+        eend $?
+}
+
+reload() {
+        ebegin "Restarting (HUP) ${APPLICATION}"
+        kill -HUP ${PIDFILE}
+        start
+        eend $?
+}
+
